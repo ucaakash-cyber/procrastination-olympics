@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Procrastination Olympics</title>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+
+<style>
+
+body{
+font-family:Arial, sans-serif;
+background:#f4f6fb;
+margin:0;
+padding:20px;
+display:flex;
+justify-content:center;
+}
+
+.container{
+max-width:420px;
+width:100%;
+}
+
+.card{
+background:white;
+padding:20px;
+border-radius:16px;
+box-shadow:0 10px 30px rgba(0,0,0,0.1);
+margin-bottom:20px;
+text-align:center;
+}
+
+h1{
+margin-bottom:10px;
+}
+
+input{
+width:100%;
+padding:12px;
+border-radius:10px;
+border:1px solid #ddd;
+margin-top:10px;
+}
+
+button{
+width:100%;
+padding:12px;
+margin-top:10px;
+border:none;
+background:#2563eb;
+color:white;
+border-radius:10px;
+font-size:16px;
+cursor:pointer;
+}
+
+button:hover{
+background:#1d4ed8;
+}
+
+.medal{
+font-size:70px;
+animation:float 2s infinite ease-in-out;
+}
+
+@keyframes float{
+0%{transform:translateY(0)}
+50%{transform:translateY(-10px)}
+100%{transform:translateY(0)}
+}
+
+.leaderboard li{
+display:flex;
+justify-content:space-between;
+padding:8px;
+border-bottom:1px solid #eee;
+}
+
+canvas{
+display:none;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="card">
+
+<h1>🏆 Procrastination Olympics</h1>
+
+<p>How much time did you waste today?</p>
+
+<input id="name" placeholder="Enter your name">
+
+<input type="file" id="upload">
+
+<p id="status"></p>
+
+<div id="result"></div>
+
+<button onclick="shareResult()">Share Result</button>
+
+<button onclick="generateMeme()">Generate Meme</button>
+
+<canvas id="memeCanvas" width="600" height="600"></canvas>
+
+</div>
+
+<div class="card">
+
+<h2>🔥 Daily Leaderboard</h2>
+
+<ul id="leaderboard" class="leaderboard"></ul>
+
+</div>
+
+</div>
+
+<script>
+
+let username=""
+let minutes=0
+let rank=""
+let medal=""
+
+const roasts=[
+"Phone battery works harder than you.",
+"Scrolling world champion.",
+"You deserve a PhD in procrastination.",
+"Netflix CEO thanks you.",
+"Your thumb deserves a gold medal.",
+"Homework left the chat."
+]
+
+function todayKey(){
+
+const d=new Date()
+
+return "leaderboard-"+d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate()
+
+}
+
+function loadLeaderboard(){
+
+const data=JSON.parse(localStorage.getItem(todayKey()))||[]
+
+data.sort((a,b)=>b.minutes-a.minutes)
+
+const list=document.getElementById("leaderboard")
+
+list.innerHTML=""
+
+data.slice(0,10).forEach(e=>{
+
+const li=document.createElement("li")
+
+li.innerHTML=`<span>${e.name}</span><span>${e.minutes}m</span>`
+
+list.appendChild(li)
+
+})
+
+}
+
+function saveScore(name,min){
+
+const key=todayKey()
+
+const data=JSON.parse(localStorage.getItem(key))||[]
+
+data.push({name:name,minutes:min})
+
+localStorage.setItem(key,JSON.stringify(data))
+
+loadLeaderboard()
+
+}
+
+document.getElementById("upload").addEventListener("change",async function(){
+
+username=document.getElementById("name").value
+
+if(!username){
+
+alert("Enter name first")
+
+return
+
+}
+
+document.getElementById("status").innerText="Scanning screenshot..."
+
+const file=this.files[0]
+
+const {data:{text}}=await Tesseract.recognize(file,"eng")
+
+const hourMatch=text.match(/(\d+)\s*h/i)
+
+const minMatch=text.match(/(\d+)\s*m/i)
+
+const hours=hourMatch?parseInt(hourMatch[1]):0
+
+const mins=minMatch?parseInt(minMatch[1]):0
+
+minutes=(hours*60)+mins
+
+if(minutes<120){
+
+rank="Productivity Ninja"
+medal="🥇"
+
+}else if(minutes<360){
+
+rank="Casual Cruiser"
+medal="🥈"
+
+}else{
+
+rank="Procrastination Legend"
+medal="🥉"
+
+}
+
+const roast=roasts[Math.floor(Math.random()*roasts.length)]
+
+document.getElementById("result").innerHTML=
+
+`<div class="medal">${medal}</div>
+
+<h2>${username}</h2>
+
+<p>${minutes} minutes screen time</p>
+
+<h3>${rank}</h3>
+
+<p>${roast}</p>`
+
+saveScore(username,minutes)
+
+})
+
+function shareResult(){
+
+const text=`${username} spent ${minutes} minutes on phone and became ${rank} in Procrastination Olympics!`
+
+if(navigator.share){
+
+navigator.share({
+
+title:"Procrastination Olympics",
+
+text:text
+
+})
+
+}else{
+
+alert(text)
+
+}
+
+}
+
+function generateMeme(){
+
+const canvas=document.getElementById("memeCanvas")
+
+const ctx=canvas.getContext("2d")
+
+ctx.fillStyle="#fff"
+
+ctx.fillRect(0,0,600,600)
+
+ctx.fillStyle="#000"
+
+ctx.font="bold 36px Arial"
+
+ctx.fillText("Expectation:",80,200)
+
+ctx.fillText(username+" will study",80,260)
+
+ctx.fillText("Reality:",80,380)
+
+ctx.fillText(minutes+" minutes scrolling",80,440)
+
+canvas.toBlob(blob=>{
+
+const file=new File([blob],"meme.png")
+
+if(navigator.share){
+
+navigator.share({
+
+files:[file],
+
+title:"My Procrastination Meme"
+
+})
+
+}
+
+})
+
+}
+
+loadLeaderboard()
+
+</script>
+
+</body>
+</html>ile],
+title:"My Procrastination Meme"
+
+})
+
+}
+
+})
+
+}
+
+loadLeaderboard()
+
+</script>
+
+</body>
+</html>ath.random()*roasts.length)]
+
+}
+
+function saveScore(){
+
+let data=JSON.parse(localStorage.getItem("leaderboard")||"[]")
+
+data.push({name:username,hours:hours,minutes:minutes})
+
+data.sort((a,b)=>b.hours-a.hours||b.minutes-a.minutes)
+
+data=data.slice(0,10)
+
+localStorage.setItem("leaderboard",JSON.stringify(data))
+
+}
+
+function renderLeaderboard(){
+
+let data=JSON.parse(localStorage.getItem("leaderboard")||"[]")
+
+board.innerHTML=""
+
+data.forEach((p,i)=>{
+
+const div=document.createElement("div")
+
+div.className="entry"
+
+div.innerHTML=
+`<span>#${i+1} ${p.name}</span>
+<span>${p.hours}h ${p.minutes}m</span>`
+
+board.appendChild(div)
+
+})
+
+}
+
+renderLeaderboard()
+
+function share(){
+
+const text=`🏆 Procrastination Olympics
+
+${username} spent ${hours}h ${minutes}m today
+
+Rank: ${rankEl.innerText}`
+
+if(navigator.share){
+
+navigator.share({
+title:"Procrastination Olympics",
+text:text
+})
+
+}else{
+
+alert(text)
+
+}
+
+}
+
+function generateMeme(){
+
+const canvas=document.getElementById("memeCanvas")
+const ctx=canvas.getContext("2d")
+
+ctx.fillStyle="#fff"
+ctx.fillRect(0,0,600,600)
+
+ctx.fillStyle="#000"
+ctx.font="bold 40px Inter"
+
+ctx.fillText("Expectation:",50,180)
+ctx.fillText(username+" will study",50,240)
+
+ctx.fillText("Reality:",50,360)
+ctx.fillText(hours+"h "+minutes+"m scrolling",50,420)
+
+canvas.toBlob(blob=>{
+
+const file=new File([blob],"meme.png")
+
+if(navigator.share){
+
+navigator.share({
+files:[file],
+title:"My procrastination meme"
+})
+
+}
+
+})
+
+}
+
+</script>
+
+</body>
+</html>")
+
+if(navigator.share){
+
+navigator.share({
+
+files:[file],
+title:"My procrastination meme"
+
+})
+
+}
+
+})
+
+}
+
+</script>
+
+</body>
+</html>}else{
+
+alert(text);
+
+}
+
+}
+
+/* meme */
+
+function generateMeme(){
+
+const canvas=document.getElementById("memeCanvas");
+
+const ctx=canvas.getContext("2d");
+
+ctx.fillStyle="#fff";
+
+ctx.fillRect(0,0,600,600);
+
+ctx.fillStyle="#000";
+
+ctx.font="bold 40px Inter";
+
+ctx.fillText("Expectation:",60,180);
+
+ctx.fillText(username+" will study",60,240);
+
+ctx.fillText("Reality:",60,360);
+
+ctx.fillText(hours+"h "+minutes+"m scrolling",60,420);
+
+canvas.toBlob(blob=>{
+
+const file=new File([blob],"meme.png");
+
+if(navigator.share){
+
+navigator.share({
+
+files:[file],
+
+title:"My Procrastination Meme"
+
+});
+
+}
+
+});
+
+}
+
+</script>
+
+</body>
+</html>
+
+</body>
+</html>
